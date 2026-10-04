@@ -30,10 +30,11 @@ h3{margin:14px 0 6px;font-size:14px;display:flex;justify-content:space-between;a
 #res,#msg{margin-top:8px;padding:8px;border-radius:8px;background:var(--bg);min-height:1em}
 #msg{color:#d92d20}
 .g{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#wm{position:absolute;top:10px;right:12px;font:600 12px system-ui,sans-serif;letter-spacing:.6px;color:var(--mu);opacity:.6;pointer-events:none;user-select:none}
 </style></head><body>
 <div id="vw"><canvas id="c"></canvas>
 <div id="bar"><button data-v="home">Inicio</button><button data-v="top">Arriba</button><button data-v="front">Frente</button><button data-v="side">Lado</button><button id="au">Girar solo</button></div>
-<div id="hint">Arrastra para rotar · rueda o pellizco para zoom</div></div>
+<div id="hint">Arrastra para rotar · rueda o pellizco para zoom</div><div id="wm">A01064</div></div>
 <div id="pn"><div id="tb"></div><div id="fm"></div><div id="msg" hidden></div>
 <h3>Objetos <button id="cl">Borrar todo</button></h3><div id="ls"><span class="mu">Aún no hay objetos. Añade un punto, vector, recta o plano.</span></div></div>
 <script>

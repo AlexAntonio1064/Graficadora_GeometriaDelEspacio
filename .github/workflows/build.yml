@@ -24,3 +24,30 @@ jobs:
             dist/*.exe
             dist/*.dmg
           if-no-files-found: error
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Crear proyecto Android
+        run: |
+          mkdir android-app && cd android-app
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          mkdir www && cp ../index.html www/
+          npx cap init "Espacio 3D" com.espacio3d.app --web-dir www
+          npx cap add android
+          npx cap sync android
+      - name: Compilar APK
+        run: |
+          cd android-app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Espacio3D-android
+          path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
