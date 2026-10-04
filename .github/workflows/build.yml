@@ -51,3 +51,20 @@ jobs:
           name: Espacio3D-android
           path: android-app/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+  web:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir site && cp index.html manifest.webmanifest sw.js icon-192.png icon-512.png site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+      - id: d
+        uses: actions/deploy-pages@v4

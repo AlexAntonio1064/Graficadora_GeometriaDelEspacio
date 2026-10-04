@@ -1,6 +1,7 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Espacio 3D</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0e1218"><link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#f4f6f9;--pn:#fff;--fg:#1b2330;--mu:#667085;--bd:#d9dee7;--ac:#2f6fed;--gr:#e1e6ee;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1218;--pn:#171d27;--fg:#e8ecf3;--mu:#98a2b3;--bd:#2a3342;--ac:#7aa5ff;--gr:#212a37}}
@@ -178,4 +179,5 @@ $('#pn').onclick=e=>{const t=e.target;
 addEventListener('resize',size);
 form();size();
 add({t:'p',p:[2,3,4]});add({t:'v',v:[3,1,2],o:[0,0,0]});add({t:'pl',n:[0,0,1],d:2});
+if('serviceWorker'in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
