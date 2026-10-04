@@ -178,6 +178,6 @@ $('#pn').onclick=e=>{const t=e.target;
  else if(t.id=='cl'){O=[];cnt={p:0,v:0,r:0,pl:0,c:0};ui();dirty=1}};
 addEventListener('resize',size);
 form();size();
-add({t:'p',p:[2,3,4]});add({t:'v',v:[3,1,2],o:[0,0,0]});add({t:'pl',n:[0,0,1],d:2});
+
 if('serviceWorker'in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
