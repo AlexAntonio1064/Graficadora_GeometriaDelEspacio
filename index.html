@@ -44,21 +44,35 @@ const sub=(a,b)=>a.map((x,i)=>x-b[i]),ad=(a,b)=>a.map((x,i)=>x+b[i]),sc=(a,k)=>a
 const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const cols=['#e5484d','#2f6fed','#16a34a','#f59e0b','#9333ea','#0891b2','#db2777'];
 const tup=a=>'('+a.map(f).join(', ')+')';
-let O=[],id=0,cnt={p:0,v:0,r:0,pl:0},yaw=-.7,pit=.5,zoom=1,auto=false,dirty=1,W=1,H=1,tab=0;
+let O=[],id=0,cnt={p:0,v:0,r:0,pl:0,c:0},yaw=-.7,pit=.5,zoom=1,auto=false,dirty=1,W=1,H=1,tab=0;
 function eq(a,b,c,d){let s='';[[a,'x'],[b,'y'],[c,'z']].forEach(([k,v])=>{if(!k)return;s+=(s?(k<0?' − ':' + '):(k<0?'−':''))+(Math.abs(k)==1?'':f(Math.abs(k)))+v});return s+' = '+f(d)}
 function sym(p,d){const a=[],b=[];'xyz'.split('').forEach((v,i)=>{const t=p[i]?`(${v} ${p[i]<0?'+':'−'} ${f(Math.abs(p[i]))})`:v;d[i]?a.push(`${t}/${f(d[i])}`):b.push(`${v} = ${f(p[i])}`)});return a.concat(b).join(a.length?' = ':'').replace(/ = (?=[xyz] = )/,', ')}
 function info(o){
  if(o.t=='p')return tup(o.p);
  if(o.t=='v')return `${tup(o.v)} · módulo ${f(nm(o.v))}`+(nm(o.o)?` · origen ${tup(o.o)}`:'');
- if(o.t=='r')return `r(t) = ${tup(o.q)} + t·${tup(o.d)}<br>Simétrica: ${sym(o.q,o.d)}`;
- return `Cartesiana: ${eq(...o.n,o.d)}<br>Normal n = ${tup(o.n)}`}
-function add(o){o.id=++id;o.n_=({p:'P',v:'v',r:'r',pl:'π'})[o.t]+(++cnt[o.t]);o.c=cols[(id-1)%cols.length];O.push(o);msg('');ui();dirty=1}
+ if(o.t=='r')return `Vectorial: r(t) = ${tup(o.q)} + t·${tup(o.d)}<br>Paramétricas: ${'xyz'.split('').map((v,i)=>`${v} = ${f(o.q[i])} ${o.d[i]<0?'−':'+'} ${f(Math.abs(o.d[i]))}t`).join(', ')}<br>Simétrica: ${sym(o.q,o.d)}`;
+ if(o.t=='c')return `x = ${o.e[0]}, y = ${o.e[1]}, z = ${o.e[2]}<br>t de ${f(o.a)} a ${f(o.b)}`;
+ const[B,u,v]=o.par||pb(o.n,o.d);
+ return `Cartesiana: ${eq(...o.n,o.d)}<br>Normal n = ${tup(o.n)}<br>Paramétrica: (x,y,z) = ${tup(B)} + s·${tup(u)} + t·${tup(v)}`}
+function pb(n,d){const B=sc(n,d/dot(n,n)),a=n.map(Math.abs),e=a[0]<=a[1]&&a[0]<=a[2]?[1,0,0]:a[1]<=a[2]?[0,1,0]:[0,0,1];let u=cr(n,e);u=sc(u,1/nm(u));const v=cr(n,u);return[B,u,sc(v,1/nm(v))]}
+function mk(s){s=s.toLowerCase().replace(/\s+/g,'');let i=0;
+ const Fn={sin:Math.sin,cos:Math.cos,tan:Math.tan,asin:Math.asin,acos:Math.acos,atan:Math.atan,sqrt:Math.sqrt,exp:Math.exp,ln:Math.log,log:Math.log10,abs:Math.abs},K={pi:Math.PI,e:Math.E},bin=(a,b,o)=>t=>o(a(t),b(t));
+ function E(){let v=T_();while(s[i]=='+'||s[i]=='-'){const m=s[i++]=='+',r=T_();v=bin(v,r,m?(x,y)=>x+y:(x,y)=>x-y)}return v}
+ function T_(){let v=U();while(s[i]=='*'||s[i]=='/'){const m=s[i++]=='*',r=U();v=bin(v,r,m?(x,y)=>x*y:(x,y)=>x/y)}return v}
+ function U(){if(s[i]=='-'){i++;const v=U();return t=>-v(t)}if(s[i]=='+'){i++;return U()}const b=A();if(s[i]=='^'){i++;return bin(b,U(),Math.pow)}return b}
+ function A(){const m=/^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));if(m){i+=m[0].length;const k=+m[0];return()=>k}
+  if(s[i]=='('){i++;const v=E();if(s[i++]!=')')throw 0;return v}
+  const w=/^[a-z]+/.exec(s.slice(i));if(!w)throw 0;i+=w[0].length;const n=w[0];
+  if(n=='t')return t=>t;if(Object.hasOwn(K,n)){const k=K[n];return()=>k}
+  if(Object.hasOwn(Fn,n)&&s[i]=='('){i++;const v=E();if(s[i++]!=')')throw 0;const h=Fn[n];return t=>h(v(t))}throw 0}
+ try{const v=E();if(i<s.length)throw 0;return v}catch(e){return null}}
+function add(o){o.id=++id;o.n_=({p:'P',v:'v',r:'r',pl:'π',c:'γ'})[o.t]+(++cnt[o.t]);o.c=cols[(id-1)%cols.length];O.push(o);msg('');ui();dirty=1}
 function msg(t){const m=$('#msg');m.hidden=!t;m.textContent=t}
 function ui(){
  $('#ls').innerHTML=O.length?O.map(o=>`<div class="it"><i style="background:${o.c}"></i><div><b>${o.n_}</b> ${info(o)}</div><button data-d="${o.id}" aria-label="Borrar ${o.n_}">✕</button></div>`).join(''):'<span class="mu">Aún no hay objetos. Añade un punto, vector, recta o plano.</span>';
- if(tab==4)form()}
+ if(tab==5)form()}
 const n3=(i,l,d)=>`<label class="r"><b>${l}</b>${'xyz'.split('').map((c,k)=>`<input type="number" step="any" inputmode="decimal" id="${i}${c}" value="${d[k]}" aria-label="${l} ${c}">`).join('')}</label>`;
-const T=['Punto','Vector','Recta','Plano','Calcular'];
+const T=['Punto','Vector','Recta','Plano','Curva','Calcular'];
 function form(){
  $('#tb').innerHTML=T.map((t,i)=>`<button class="${i==tab?'on':''}" data-t="${i}">${t}</button>`).join('');
  const b=(t)=>`<div class="g"><button class="pri" id="ok">${t}</button></div>`;
@@ -66,29 +80,43 @@ function form(){
  n3('p','x, y, z',[2,3,4])+b('Añadir punto'),
  n3('v','Vector',[3,1,2])+n3('o','Origen',[0,0,0])+'<div class="mu">El vector sale del origen (0,0,0) salvo que cambies “Origen”.</div>'+b('Añadir vector'),
  n3('q','Punto',[0,0,0])+n3('d','Dirección',[1,1,1])+'<div class="mu">Recta que pasa por el punto con la dirección dada.</div>'+b('Añadir recta'),
- `<select id="pm"><option value="0">Cartesiana: ax + by + cz = d</option><option value="1">Punto y vector normal</option></select>
+ `<select id="pm"><option value="0">Cartesiana: ax + by + cz = d</option><option value="1">Punto y vector normal</option><option value="2">Paramétrica: punto + 2 vectores</option></select>
  <div id="pm0"><div class="r r4">${'abcd'.split('').map((c,i)=>`<input type="number" step="any" inputmode="decimal" id="p${c}" value="${[1,2,3,6][i]}" aria-label="${c}">`).join('')}</div><div class="mu">Coeficientes a, b, c y el término d.</div></div>
- <div id="pm1" hidden>${n3('s','Punto',[0,0,2])+n3('w','Normal',[0,0,1])}</div>`+b('Añadir plano'),
- (()=>{const op=O.map(o=>`<option value="${o.id}">${o.n_}</option>`).join('');return O.length<2?'<div class="mu">Añade al menos dos objetos para calcular.</div>':`<div class="r" style="grid-template-columns:30px 1fr 30px 1fr"><b>A</b><select id="sa">${op}</select><b>B</b><select id="sb">${op}</select></div>
- <div class="g">${[['dist','Distancia'],['dot','Producto punto'],['cross','Producto cruz'],['ang','Ángulo'],['int','Intersección']].map(([k,l])=>`<button data-c="${k}">${l}</button>`).join('')}</div><div id="res" class="mu">Elige A y B y una operación.</div>`})()];
- $('#fm').innerHTML=F[tab];
- const pm=$('#pm');if(pm)pm.onchange=()=>{$('#pm0').hidden=pm.value!=0;$('#pm1').hidden=pm.value==0}}
+ <div id="pm1" hidden>${n3('s','Punto',[0,0,2])+n3('w','Normal',[0,0,1])}</div><div id="pm2" hidden>${n3('s2','Punto',[0,0,2])+n3('u','Vector u',[1,0,0])+n3('w2','Vector v',[0,1,0])}</div>`+b('Añadir plano'),
+ `<select id="cx" aria-label="Ejemplos"><option value="">Ejemplos…</option><option value="cos(t)|sin(t)|t/3|0|20">Hélice</option><option value="3*cos(t)|3*sin(t)|0|0|6.2832">Circunferencia</option><option value="t*cos(t)/3|t*sin(t)/3|t/3|0|20">Espiral cónica</option><option value="sin(t)+2*sin(2*t)|cos(t)-2*cos(2*t)|-sin(3*t)|0|6.2832">Nudo trébol</option><option value="t|t^2/5|0|-5|5">Parábola</option></select>
+ ${['x','y','z'].map((c,i)=>`<label class="r" style="grid-template-columns:50px 1fr"><b>${c}(t)</b><input type="text" id="e${c}" value="${['cos(t)','sin(t)','t/3'][i]}" autocapitalize="off" spellcheck="false"></label>`).join('')}
+ <label class="r" style="grid-template-columns:70px 1fr 1fr"><b>t entre</b><input type="number" step="any" id="ta" value="0"><input type="number" step="any" id="tb" value="20"></label>
+ <div class="mu">Usa t, + − * / ^, paréntesis, pi, e y sin, cos, tan, sqrt, exp, ln, abs. Escribe 2*t, no 2t.</div>`+b('Añadir curva'),
+ (()=>{const op=O.map(o=>`<option value="${o.id}">${o.n_}</option>`).join('');return O.length<2?'<div class="mu">Añade al menos dos objetos para calcular.</div>':`<div class="r" style="grid-template-columns:30px 1fr 30px 1fr"><b>A</b><select id="sa">${op}</select><b>B</b><select id="sb">${op}</select></div><div class="r" style="grid-template-columns:30px 1fr"><b>C</b><select id="sk">${op}</select></div>
+ <div class="g">${[['dist','Distancia'],['dot','Producto punto'],['cross','Producto cruz'],['ang','Ángulo'],['int','Intersección'],['mid','Punto medio'],['line','Recta AB'],['pl3','Plano ABC'],['proj','Proyectar A en B']].map(([k,l])=>`<button data-c="${k}">${l}</button>`).join('')}</div><div id="res" class="mu">Elige A y B y una operación.</div>`})()];
+ $('#fm').innerHTML=F[tab];const cs=$('#cx');if(cs)cs.onchange=()=>{const v=cs.value.split('|');if(v.length>4)['ex','ey','ez','ta','tb'].forEach((k,i)=>$('#'+k).value=v[i])};
+ const pm=$('#pm');if(pm)pm.onchange=()=>{['pm0','pm1','pm2'].forEach((k,i)=>$('#'+k).hidden=pm.value!=i)}}
 function submit(){
  const g=(i)=>['x','y','z'].map(c=>N(i+c));
  if(tab==0)add({t:'p',p:g('p')});
  if(tab==1){const v=g('v');if(!nm(v))return msg('El vector no puede ser nulo.');add({t:'v',v,o:g('o')})}
  if(tab==2){const d=g('d');if(!nm(d))return msg('La dirección no puede ser (0, 0, 0).');add({t:'r',q:g('q'),d})}
- if(tab==3){let n,d;if($('#pm').value==0){n=[N('pa'),N('pb'),N('pc')];d=N('pd')}else{n=g('w');d=dot(n,g('s'))}
-  if(!nm(n))return msg('Los coeficientes a, b, c no pueden ser todos 0.');add({t:'pl',n,d})}}
+ if(tab==3){let n,d,par;const m=$('#pm').value;if(m==0){n=[N('pa'),N('pb'),N('pc')];d=N('pd')}else if(m==1){n=g('w');d=dot(n,g('s'))}else{const u=g('u'),v=g('w2'),p0=g('s2');n=cr(u,v);d=dot(n,p0);par=[p0,u,v]}
+  if(!nm(n))return msg(m==2?'Los vectores u y v no pueden ser nulos ni paralelos.':'Los coeficientes a, b, c no pueden ser todos 0.');add({t:'pl',n,d,par})}
+ if(tab==4){const e=['ex','ey','ez'].map(k=>$('#'+k).value.trim()),a=N('ta'),b=N('tb'),fn=e.map(mk);
+  if(fn.some(h=>!h))return msg('Revisa las expresiones: usa t, + − * / ^, paréntesis y funciones como sin, cos, sqrt, exp.');
+  if(!(b>a))return msg('El valor final de t debe ser mayor que el inicial.');
+  const pts=[];for(let i=0;i<=400;i++){const t=a+(b-a)*i/400,p=fn.map(h=>h(t));pts.push(p.every(isFinite)?p:null)}add({t:'c',e,a,b,pts})}}
 const dr=o=>o.t=='v'?o.v:o.t=='r'?o.d:o.n;
 function calc(op){
  const a=O.find(o=>o.id==N('sa')),b=O.find(o=>o.id==N('sb')),out=$('#res');let s='';
  const no='Esa operación no está disponible para este par de objetos.';
  const pts=a.t=='p'&&b.t=='p',[p,o2]=a.t=='p'?[a,b]:[b,a];
- if(op=='dist'){
+ const sel=['sa','sb','sk'].map(k=>$('#'+k).value);
+ if(a.t=='c'||b.t=='c')return $('#res').textContent='Las curvas no se usan en los cálculos.';
+ if(op=='mid'){if(pts){const m=sc(ad(a.p,b.p),.5);add({t:'p',p:m});s=`Punto medio = ${tup(m)} (añadido)`}else s=no}
+ else if(op=='line'){if(pts&&nm(sub(b.p,a.p))>1e-9){add({t:'r',q:a.p,d:sub(b.p,a.p)});s='Recta AB añadida.'}else s=pts?'Los puntos coinciden.':no}
+ else if(op=='pl3'){const C=O.find(o=>o.id==N('sk'));if(pts&&C&&C.t=='p'){const n=cr(sub(b.p,a.p),sub(C.p,a.p));if(nm(n)<1e-9)s='Los tres puntos son colineales: no definen un plano.';else{add({t:'pl',n,d:dot(n,a.p)});s='Plano ABC añadido.'}}else s='Elige tres puntos en A, B y C.'}
+ else if(op=='proj'){if(a.t=='p'&&b.t=='pl'){const Q=sub(a.p,sc(b.n,(dot(b.n,a.p)-b.d)/dot(b.n,b.n)));add({t:'p',p:Q});s=`Proyección = ${tup(Q)} (añadida)`}else if(a.t=='p'&&b.t=='r'){const Q=ad(b.q,sc(b.d,dot(sub(a.p,b.q),b.d)/dot(b.d,b.d)));add({t:'p',p:Q});s=`Proyección = ${tup(Q)} (añadida)`}else s='Elige un punto en A y un plano o recta en B.'}
+ else if(op=='dist'){
   if(pts)s=`d(${a.n_}, ${b.n_}) = ${f(nm(sub(a.p,b.p)))}`;
   else if(p.t=='p'&&o2.t=='pl')s=`Distancia punto–plano = ${f(Math.abs(dot(o2.n,p.p)-o2.d)/nm(o2.n))}`;
-  else if(p.t=='p'&&o2.t=='r')s=`Distancia punto–recta = ${f(nm(cr(sub(p.p,o2.q),o2.d))/nm(o2.d))}`;else s=no}
+  else if(p.t=='p'&&o2.t=='r')s=`Distancia punto–recta = ${f(nm(cr(sub(p.p,o2.q),o2.d))/nm(o2.d))}`;else if(a.t=='r'&&b.t=='r'){const m=cr(a.d,b.d);s=`Distancia entre rectas = ${f(nm(m)<1e-9?nm(cr(sub(b.q,a.q),a.d))/nm(a.d):Math.abs(dot(sub(b.q,a.q),m))/nm(m))}`}else s=no}
  else if(a.t=='p'||b.t=='p')s=no;
  else if(op=='dot'){const k=dot(dr(a),dr(b));s=`A · B = ${f(k)}`+(Math.abs(k)<1e-9?' (son perpendiculares)':'')}
  else if(op=='cross'){const c=cr(dr(a),dr(b));s=`A × B = ${tup(c)}`;if(nm(c)>1e-9){add({t:'v',v:c,o:[0,0,0]});s+=' (añadido como vector)'}else s+=' (son paralelos)'}
@@ -103,8 +131,9 @@ function calc(op){
   else if(a.t=='pl'&&b.t=='pl'){const m=cr(a.n,b.n),mm=dot(m,m);
    if(mm<1e-9)s='Los planos son paralelos: no hay recta de intersección.';
    else{const q=sc(ad(sc(cr(b.n,m),a.d),sc(cr(m,a.n),b.d)),1/mm);add({t:'r',q,d:m});s='Intersección añadida como recta.'}}
+  else if(a.t=='r'&&b.t=='r'){const m=cr(a.d,b.d),w=sub(b.q,a.q),mm=dot(m,m);if(mm<1e-9)s='Las rectas son paralelas.';else if(Math.abs(dot(w,m))>1e-6)s='Las rectas se cruzan sin cortarse (alabeadas).';else{const t=dot(cr(w,b.d),m)/mm,Z=ad(a.q,sc(a.d,t));add({t:'p',p:Z});s=`Se cortan en ${tup(Z)} (añadido)`}}
   else s=no}
- const r=$('#res');if(r)r.textContent=s}
+ $('#res').textContent=s;['sa','sb','sk'].forEach((k,i)=>$('#'+k).value=sel[i])}
 /* ---- dibujo 3D ---- */
 function P(v){const c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pit),sp=Math.sin(pit),x=v[0]*c-v[1]*s,y=v[0]*s+v[1]*c,y2=y*cp-v[2]*sp,z2=y*sp+v[2]*cp,S=Math.min(W,H)/30*zoom,k=1/(1+y2/70);return[W/2+x*S*k,H/2-z2*S*k,y2]}
 function clip(p,d){let a=-1e9,b=1e9;for(let i=0;i<3;i++){if(Math.abs(d[i])<1e-9){if(Math.abs(p[i])>R)return null}else{let t1=(-R-p[i])/d[i],t2=(R-p[i])/d[i];if(t1>t2)[t1,t2]=[t2,t1];a=Math.max(a,t1);b=Math.min(b,t2)}}return a<b?[ad(p,sc(d,a)),ad(p,sc(d,b))]:null}
@@ -120,7 +149,8 @@ function draw(){
   const[p,q]=L(sc(d,-R),sc(d,R),c,2);arrow(p,q,c,9);X.fillStyle=c;X.font='bold 14px system-ui,sans-serif';X.fillText(l,q[0]+6,q[1]-6);X.font='11px system-ui,sans-serif';X.fillStyle=mu;
   for(let i=-R+2;i<R;i+=2)if(i){const t=P(sc(d,i));X.fillText(i,t[0]+4,t[1]+12)}});
  X.font='13px system-ui,sans-serif';
- O.filter(o=>o.t!='pl').map(o=>({o,d:o.t=='p'?P(o.p)[2]:o.t=='v'?P(ad(o.o,o.v))[2]:P(o.q)[2]})).sort((a,b)=>b.d-a.d).forEach(({o})=>{
+ O.filter(o=>o.t!='pl').map(o=>({o,d:o.t=='p'?P(o.p)[2]:o.t=='v'?P(ad(o.o,o.v))[2]:o.t=='c'?0:P(o.q)[2]})).sort((a,b)=>b.d-a.d).forEach(({o})=>{
+  if(o.t=='c'){X.strokeStyle=o.c;X.lineWidth=2;X.beginPath();let on=0;o.pts.forEach(p=>{if(!p||Math.max(...p.map(Math.abs))>R*3){on=0;return}const q=P(p);on?X.lineTo(q[0],q[1]):X.moveTo(q[0],q[1]);on=1});X.stroke();const f0=o.pts.find(Boolean);if(f0){const q=P(f0);X.fillStyle=o.c;X.fillText(o.n_,q[0]+5,q[1]-5)}}
   if(o.t=='r'){const s=clip(o.q,o.d);if(s){const[p,q]=L(s[0],s[1],o.c,2);X.fillStyle=o.c;X.fillText(o.n_,q[0]+4,q[1]-4)}}
   if(o.t=='v'){const[p,q]=L(o.o,ad(o.o,o.v),o.c,2.5);arrow(p,q,o.c,11);X.fillStyle=o.c;X.fillText(o.n_,(p[0]+q[0])/2+5,(p[1]+q[1])/2-5)}
   if(o.t=='p'){const p=P(o.p);X.fillStyle=o.c;X.beginPath();X.arc(p[0],p[1],5,0,7);X.fill();X.fillText(`${o.n_} ${tup(o.p)}`,p[0]+8,p[1]-7)}})}
@@ -143,7 +173,7 @@ $('#pn').onclick=e=>{const t=e.target;
  else if(t.id=='ok')submit();
  else if(t.dataset.c)calc(t.dataset.c);
  else if(t.dataset.d){O=O.filter(o=>o.id!=t.dataset.d);ui();dirty=1}
- else if(t.id=='cl'){O=[];cnt={p:0,v:0,r:0,pl:0};ui();dirty=1}};
+ else if(t.id=='cl'){O=[];cnt={p:0,v:0,r:0,pl:0,c:0};ui();dirty=1}};
 addEventListener('resize',size);
 form();size();
 add({t:'p',p:[2,3,4]});add({t:'v',v:[3,1,2],o:[0,0,0]});add({t:'pl',n:[0,0,1],d:2});
