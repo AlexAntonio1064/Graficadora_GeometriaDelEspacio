@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Espacio 3D</title>
+<style>
+:root{--bg:#f4f6f9;--pn:#fff;--fg:#1b2330;--mu:#667085;--bd:#d9dee7;--ac:#2f6fed;--gr:#e1e6ee;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1218;--pn:#171d27;--fg:#e8ecf3;--mu:#98a2b3;--bd:#2a3342;--ac:#7aa5ff;--gr:#212a37}}
+:root[data-theme=dark]{--bg:#0e1218;--pn:#171d27;--fg:#e8ecf3;--mu:#98a2b3;--bd:#2a3342;--ac:#7aa5ff;--gr:#212a37}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:grid;grid-template-rows:52% 48%}
+@media(min-width:820px){body{grid-template-rows:none;grid-template-columns:1fr 370px}}
+#vw{position:relative;min-height:0;min-width:0}
+canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#bar{position:absolute;top:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap}
+#hint{position:absolute;bottom:6px;left:10px;color:var(--mu);font-size:12px;pointer-events:none}
+button,select,input{font:inherit;color:var(--fg);background:var(--pn);border:1px solid var(--bd);border-radius:8px;padding:6px 9px}
+button{cursor:pointer}button:hover{border-color:var(--ac)}
+button.on,.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+#pn{background:var(--pn);border-left:1px solid var(--bd);overflow:auto;padding:12px;min-height:0}
+#tb{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.r{display:grid;grid-template-columns:70px repeat(3,1fr);gap:6px;align-items:center;margin:6px 0}
+.r4{grid-template-columns:repeat(4,1fr)}
+.r input{width:100%;min-width:0;box-sizing:border-box}
+.r b{font-weight:600}
+.mu{color:var(--mu);font-size:12px}
+h3{margin:14px 0 6px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.it{display:flex;gap:8px;padding:7px 0;border-top:1px solid var(--bd);align-items:flex-start}
+.it i{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none}
+.it div{flex:1;min-width:0;overflow-wrap:anywhere}
+.it button{padding:2px 8px}
+#res,#msg{margin-top:8px;padding:8px;border-radius:8px;background:var(--bg);min-height:1em}
+#msg{color:#d92d20}
+.g{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+</style></head><body>
+<div id="vw"><canvas id="c"></canvas>
+<div id="bar"><button data-v="home">Inicio</button><button data-v="top">Arriba</button><button data-v="front">Frente</button><button data-v="side">Lado</button><button id="au">Girar solo</button></div>
+<div id="hint">Arrastra para rotar · rueda o pellizco para zoom</div></div>
+<div id="pn"><div id="tb"></div><div id="fm"></div><div id="msg" hidden></div>
+<h3>Objetos <button id="cl">Borrar todo</button></h3><div id="ls"><span class="mu">Aún no hay objetos. Añade un punto, vector, recta o plano.</span></div></div>
+<script>
+const $=s=>document.querySelector(s),N=id=>+$('#'+id).value;
+const cv=$('#c'),X=cv.getContext('2d'),R=10;
+const f=n=>{n=Math.round(n*100)/100;return Object.is(n,-0)?'0':''+n};
+const sub=(a,b)=>a.map((x,i)=>x-b[i]),ad=(a,b)=>a.map((x,i)=>x+b[i]),sc=(a,k)=>a.map(x=>x*k),dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],nm=a=>Math.hypot(...a);
+const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const cols=['#e5484d','#2f6fed','#16a34a','#f59e0b','#9333ea','#0891b2','#db2777'];
+const tup=a=>'('+a.map(f).join(', ')+')';
+let O=[],id=0,cnt={p:0,v:0,r:0,pl:0},yaw=-.7,pit=.5,zoom=1,auto=false,dirty=1,W=1,H=1,tab=0;
+function eq(a,b,c,d){let s='';[[a,'x'],[b,'y'],[c,'z']].forEach(([k,v])=>{if(!k)return;s+=(s?(k<0?' − ':' + '):(k<0?'−':''))+(Math.abs(k)==1?'':f(Math.abs(k)))+v});return s+' = '+f(d)}
+function sym(p,d){const a=[],b=[];'xyz'.split('').forEach((v,i)=>{const t=p[i]?`(${v} ${p[i]<0?'+':'−'} ${f(Math.abs(p[i]))})`:v;d[i]?a.push(`${t}/${f(d[i])}`):b.push(`${v} = ${f(p[i])}`)});return a.concat(b).join(a.length?' = ':'').replace(/ = (?=[xyz] = )/,', ')}
+function info(o){
+ if(o.t=='p')return tup(o.p);
+ if(o.t=='v')return `${tup(o.v)} · módulo ${f(nm(o.v))}`+(nm(o.o)?` · origen ${tup(o.o)}`:'');
+ if(o.t=='r')return `r(t) = ${tup(o.q)} + t·${tup(o.d)}<br>Simétrica: ${sym(o.q,o.d)}`;
+ return `Cartesiana: ${eq(...o.n,o.d)}<br>Normal n = ${tup(o.n)}`}
+function add(o){o.id=++id;o.n_=({p:'P',v:'v',r:'r',pl:'π'})[o.t]+(++cnt[o.t]);o.c=cols[(id-1)%cols.length];O.push(o);msg('');ui();dirty=1}
+function msg(t){const m=$('#msg');m.hidden=!t;m.textContent=t}
+function ui(){
+ $('#ls').innerHTML=O.length?O.map(o=>`<div class="it"><i style="background:${o.c}"></i><div><b>${o.n_}</b> ${info(o)}</div><button data-d="${o.id}" aria-label="Borrar ${o.n_}">✕</button></div>`).join(''):'<span class="mu">Aún no hay objetos. Añade un punto, vector, recta o plano.</span>';
+ if(tab==4)form()}
+const n3=(i,l,d)=>`<label class="r"><b>${l}</b>${'xyz'.split('').map((c,k)=>`<input type="number" step="any" inputmode="decimal" id="${i}${c}" value="${d[k]}" aria-label="${l} ${c}">`).join('')}</label>`;
+const T=['Punto','Vector','Recta','Plano','Calcular'];
+function form(){
+ $('#tb').innerHTML=T.map((t,i)=>`<button class="${i==tab?'on':''}" data-t="${i}">${t}</button>`).join('');
+ const b=(t)=>`<div class="g"><button class="pri" id="ok">${t}</button></div>`;
+ const F=[
+ n3('p','x, y, z',[2,3,4])+b('Añadir punto'),
+ n3('v','Vector',[3,1,2])+n3('o','Origen',[0,0,0])+'<div class="mu">El vector sale del origen (0,0,0) salvo que cambies “Origen”.</div>'+b('Añadir vector'),
+ n3('q','Punto',[0,0,0])+n3('d','Dirección',[1,1,1])+'<div class="mu">Recta que pasa por el punto con la dirección dada.</div>'+b('Añadir recta'),
+ `<select id="pm"><option value="0">Cartesiana: ax + by + cz = d</option><option value="1">Punto y vector normal</option></select>
+ <div id="pm0"><div class="r r4">${'abcd'.split('').map((c,i)=>`<input type="number" step="any" inputmode="decimal" id="p${c}" value="${[1,2,3,6][i]}" aria-label="${c}">`).join('')}</div><div class="mu">Coeficientes a, b, c y el término d.</div></div>
+ <div id="pm1" hidden>${n3('s','Punto',[0,0,2])+n3('w','Normal',[0,0,1])}</div>`+b('Añadir plano'),
+ (()=>{const op=O.map(o=>`<option value="${o.id}">${o.n_}</option>`).join('');return O.length<2?'<div class="mu">Añade al menos dos objetos para calcular.</div>':`<div class="r" style="grid-template-columns:30px 1fr 30px 1fr"><b>A</b><select id="sa">${op}</select><b>B</b><select id="sb">${op}</select></div>
+ <div class="g">${[['dist','Distancia'],['dot','Producto punto'],['cross','Producto cruz'],['ang','Ángulo'],['int','Intersección']].map(([k,l])=>`<button data-c="${k}">${l}</button>`).join('')}</div><div id="res" class="mu">Elige A y B y una operación.</div>`})()];
+ $('#fm').innerHTML=F[tab];
+ const pm=$('#pm');if(pm)pm.onchange=()=>{$('#pm0').hidden=pm.value!=0;$('#pm1').hidden=pm.value==0}}
+function submit(){
+ const g=(i)=>['x','y','z'].map(c=>N(i+c));
+ if(tab==0)add({t:'p',p:g('p')});
+ if(tab==1){const v=g('v');if(!nm(v))return msg('El vector no puede ser nulo.');add({t:'v',v,o:g('o')})}
+ if(tab==2){const d=g('d');if(!nm(d))return msg('La dirección no puede ser (0, 0, 0).');add({t:'r',q:g('q'),d})}
+ if(tab==3){let n,d;if($('#pm').value==0){n=[N('pa'),N('pb'),N('pc')];d=N('pd')}else{n=g('w');d=dot(n,g('s'))}
+  if(!nm(n))return msg('Los coeficientes a, b, c no pueden ser todos 0.');add({t:'pl',n,d})}}
+const dr=o=>o.t=='v'?o.v:o.t=='r'?o.d:o.n;
+function calc(op){
+ const a=O.find(o=>o.id==N('sa')),b=O.find(o=>o.id==N('sb')),out=$('#res');let s='';
+ const no='Esa operación no está disponible para este par de objetos.';
+ const pts=a.t=='p'&&b.t=='p',[p,o2]=a.t=='p'?[a,b]:[b,a];
+ if(op=='dist'){
+  if(pts)s=`d(${a.n_}, ${b.n_}) = ${f(nm(sub(a.p,b.p)))}`;
+  else if(p.t=='p'&&o2.t=='pl')s=`Distancia punto–plano = ${f(Math.abs(dot(o2.n,p.p)-o2.d)/nm(o2.n))}`;
+  else if(p.t=='p'&&o2.t=='r')s=`Distancia punto–recta = ${f(nm(cr(sub(p.p,o2.q),o2.d))/nm(o2.d))}`;else s=no}
+ else if(a.t=='p'||b.t=='p')s=no;
+ else if(op=='dot'){const k=dot(dr(a),dr(b));s=`A · B = ${f(k)}`+(Math.abs(k)<1e-9?' (son perpendiculares)':'')}
+ else if(op=='cross'){const c=cr(dr(a),dr(b));s=`A × B = ${tup(c)}`;if(nm(c)>1e-9){add({t:'v',v:c,o:[0,0,0]});s+=' (añadido como vector)'}else s+=' (son paralelos)'}
+ else if(op=='ang'){const u=dr(a),w=dr(b),e=Math.PI/180,c=dot(u,w)/nm(u)/nm(w);let r;
+  if(a.t=='pl'&&b.t=='pl')r=Math.acos(Math.min(1,Math.abs(c)));
+  else if(a.t=='pl'||b.t=='pl')r=Math.asin(Math.min(1,Math.abs(c)));else r=Math.acos(Math.max(-1,Math.min(1,c)));
+  s=`Ángulo = ${f(r/e)}°`}
+ else if(op=='int'){
+  if(a.t=='r'&&b.t=='pl'||a.t=='pl'&&b.t=='r'){const L=a.t=='r'?a:b,Q=a.t=='pl'?a:b,k=dot(Q.n,L.d);
+   if(Math.abs(k)<1e-9)s=Math.abs(dot(Q.n,L.q)-Q.d)<1e-9?'La recta está contenida en el plano.':'La recta es paralela al plano: no se cortan.';
+   else{const t=(Q.d-dot(Q.n,L.q))/k,P=ad(L.q,sc(L.d,t));add({t:'p',p:P});s=`Se cortan en ${tup(P)} (añadido)`}}
+  else if(a.t=='pl'&&b.t=='pl'){const m=cr(a.n,b.n),mm=dot(m,m);
+   if(mm<1e-9)s='Los planos son paralelos: no hay recta de intersección.';
+   else{const q=sc(ad(sc(cr(b.n,m),a.d),sc(cr(m,a.n),b.d)),1/mm);add({t:'r',q,d:m});s='Intersección añadida como recta.'}}
+  else s=no}
+ const r=$('#res');if(r)r.textContent=s}
+/* ---- dibujo 3D ---- */
+function P(v){const c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pit),sp=Math.sin(pit),x=v[0]*c-v[1]*s,y=v[0]*s+v[1]*c,y2=y*cp-v[2]*sp,z2=y*sp+v[2]*cp,S=Math.min(W,H)/30*zoom,k=1/(1+y2/70);return[W/2+x*S*k,H/2-z2*S*k,y2]}
+function clip(p,d){let a=-1e9,b=1e9;for(let i=0;i<3;i++){if(Math.abs(d[i])<1e-9){if(Math.abs(p[i])>R)return null}else{let t1=(-R-p[i])/d[i],t2=(R-p[i])/d[i];if(t1>t2)[t1,t2]=[t2,t1];a=Math.max(a,t1);b=Math.min(b,t2)}}return a<b?[ad(p,sc(d,a)),ad(p,sc(d,b))]:null}
+function poly(n,d){const pts=[];for(let a=0;a<3;a++){if(!n[a])continue;const o=[0,1,2].filter(i=>i!=a);for(const u of[-R,R])for(const w of[-R,R]){const t=(d-n[o[0]]*u-n[o[1]]*w)/n[a];if(Math.abs(t)<=R+1e-9){const p=[0,0,0];p[o[0]]=u;p[o[1]]=w;p[a]=t;pts.push(p)}}}
+ if(pts.length<3)return[];const c=sc(pts.reduce(ad),1/pts.length),e1=sub(pts[0],c),e2=cr(n,e1),an=p=>Math.atan2(dot(sub(p,c),e2),dot(sub(p,c),e1));return pts.sort((p,q)=>an(p)-an(q))}
+function draw(){
+ const st=getComputedStyle(document.documentElement),gr=st.getPropertyValue('--gr'),mu=st.getPropertyValue('--mu');
+ X.clearRect(0,0,W,H);X.font='12px system-ui,sans-serif';
+ const L=(a,b,c,w)=>{const p=P(a),q=P(b);X.strokeStyle=c;X.lineWidth=w||1;X.beginPath();X.moveTo(p[0],p[1]);X.lineTo(q[0],q[1]);X.stroke();return[p,q]};
+ for(let i=-R;i<=R;i++){L([i,-R,0],[i,R,0],gr);L([-R,i,0],[R,i,0],gr)}
+ O.filter(o=>o.t=='pl').map(o=>({o,p:poly(o.n,o.d).map(P)})).filter(e=>e.p.length).sort((a,b)=>b.p[0][2]-a.p[0][2]).forEach(({o,p})=>{X.beginPath();p.forEach((q,i)=>i?X.lineTo(q[0],q[1]):X.moveTo(q[0],q[1]));X.closePath();X.globalAlpha=.28;X.fillStyle=o.c;X.fill();X.globalAlpha=1;X.strokeStyle=o.c;X.lineWidth=1.5;X.stroke();X.fillStyle=o.c;X.fillText(o.n_,p[0][0]+4,p[0][1]-4)});
+ [['x',[1,0,0],'#e5484d'],['y',[0,1,0],'#16a34a'],['z',[0,0,1],'#2f6fed']].forEach(([l,d,c])=>{
+  const[p,q]=L(sc(d,-R),sc(d,R),c,2);arrow(p,q,c,9);X.fillStyle=c;X.font='bold 14px system-ui,sans-serif';X.fillText(l,q[0]+6,q[1]-6);X.font='11px system-ui,sans-serif';X.fillStyle=mu;
+  for(let i=-R+2;i<R;i+=2)if(i){const t=P(sc(d,i));X.fillText(i,t[0]+4,t[1]+12)}});
+ X.font='13px system-ui,sans-serif';
+ O.filter(o=>o.t!='pl').map(o=>({o,d:o.t=='p'?P(o.p)[2]:o.t=='v'?P(ad(o.o,o.v))[2]:P(o.q)[2]})).sort((a,b)=>b.d-a.d).forEach(({o})=>{
+  if(o.t=='r'){const s=clip(o.q,o.d);if(s){const[p,q]=L(s[0],s[1],o.c,2);X.fillStyle=o.c;X.fillText(o.n_,q[0]+4,q[1]-4)}}
+  if(o.t=='v'){const[p,q]=L(o.o,ad(o.o,o.v),o.c,2.5);arrow(p,q,o.c,11);X.fillStyle=o.c;X.fillText(o.n_,(p[0]+q[0])/2+5,(p[1]+q[1])/2-5)}
+  if(o.t=='p'){const p=P(o.p);X.fillStyle=o.c;X.beginPath();X.arc(p[0],p[1],5,0,7);X.fill();X.fillText(`${o.n_} ${tup(o.p)}`,p[0]+8,p[1]-7)}})}
+function arrow(p,q,c,s){const a=Math.atan2(q[1]-p[1],q[0]-p[0]);X.fillStyle=c;X.beginPath();X.moveTo(q[0],q[1]);X.lineTo(q[0]-s*Math.cos(a-.4),q[1]-s*Math.sin(a-.4));X.lineTo(q[0]-s*Math.cos(a+.4),q[1]-s*Math.sin(a+.4));X.fill()}
+function size(){const d=devicePixelRatio||1,r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;X.setTransform(d,0,0,d,0,0);dirty=1}
+(function loop(){if(auto){yaw+=.008;dirty=1}if(dirty){draw();dirty=0}requestAnimationFrame(loop)})();
+/* ---- interacción ---- */
+const ptr=new Map();let pd=0;
+cv.onpointerdown=e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,e);pd=0};
+cv.onpointerup=cv.onpointercancel=e=>ptr.delete(e.pointerId);
+cv.onpointermove=e=>{const o=ptr.get(e.pointerId);if(!o)return;
+ if(ptr.size==1){yaw+=(e.clientX-o.clientX)*.01;pit=Math.max(-Math.PI/2,Math.min(Math.PI/2,pit+(e.clientY-o.clientY)*.01))}
+ else if(ptr.size==2){const[a,b]=[...ptr.values()],o2=a.pointerId==e.pointerId?b:a,d0=Math.hypot(o.clientX-o2.clientX,o.clientY-o2.clientY),d1=Math.hypot(e.clientX-o2.clientX,e.clientY-o2.clientY);zoom=Math.max(.3,Math.min(6,zoom*d1/d0))}
+ ptr.set(e.pointerId,e);dirty=1};
+cv.onwheel=e=>{e.preventDefault();zoom=Math.max(.3,Math.min(6,zoom*(e.deltaY<0?1.1:.9)));dirty=1};
+$('#bar').onclick=e=>{const v=e.target.dataset.v;if(e.target.id=='au'){auto=!auto;e.target.classList.toggle('on',auto)}
+ if(v){[yaw,pit]=({home:[-.7,.5],top:[0,Math.PI/2],front:[0,0],side:[-Math.PI/2,0]})[v];if(v=='home')zoom=1;dirty=1}};
+$('#pn').onclick=e=>{const t=e.target;
+ if(t.dataset.t){tab=+t.dataset.t;msg('');form()}
+ else if(t.id=='ok')submit();
+ else if(t.dataset.c)calc(t.dataset.c);
+ else if(t.dataset.d){O=O.filter(o=>o.id!=t.dataset.d);ui();dirty=1}
+ else if(t.id=='cl'){O=[];cnt={p:0,v:0,r:0,pl:0};ui();dirty=1}};
+addEventListener('resize',size);
+form();size();
+add({t:'p',p:[2,3,4]});add({t:'v',v:[3,1,2],o:[0,0,0]});add({t:'pl',n:[0,0,1],d:2});
+</script></body></html>

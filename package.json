@@ -1,0 +1,17 @@
+{
+  "name": "espacio3d",
+  "version": "1.0.0",
+  "description": "Visor 3D de geometría del espacio",
+  "main": "main.js",
+  "author": "Espacio 3D",
+  "scripts": { "start": "electron .", "dist": "electron-builder --publish never" },
+  "devDependencies": { "electron": "^33.0.0", "electron-builder": "^25.1.8" },
+  "build": {
+    "appId": "com.espacio3d.app",
+    "productName": "Espacio 3D",
+    "artifactName": "Espacio3D-${os}-${arch}.${ext}",
+    "files": ["main.js", "index.html"],
+    "win": { "target": [{ "target": "portable", "arch": ["x64"] }] },
+    "mac": { "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }], "category": "public.app-category.education" }
+  }
+}
